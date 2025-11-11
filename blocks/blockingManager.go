@@ -1,6 +1,7 @@
 package blocks
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -21,15 +22,17 @@ func init() {
 	go manageState()
 }
 
-func ActivateProfile(s string) {
+func ActivateProfile(s string) error {
 	singleton.lock.Lock()
 	defer singleton.lock.Unlock()
 
 	if s == "lunch" && time.Since(singleton.lastLunch) < time.Hour*12 {
 		fmt.Println("Had lunch too recently")
+		return errors.New("had lunch too recently")
 	} else {
 		singleton.activity = s
 	}
+	return nil
 }
 
 func DeactivateProfile() {
@@ -39,18 +42,19 @@ func DeactivateProfile() {
 }
 
 func manageState() {
+	unblockURLs()
+
 	for {
 
-		time.Sleep(time.Second * 10)
+		time.Sleep(time.Second * 3)
 
 		switch {
 		case singleton.activity == singleton.currentActivity:
-
 		case singleton.activity != singleton.currentActivity:
-			if singleton.activity == "" {
-				removeBlocksToActivity(singleton.currentActivity)
-			} else {
-				removeBlocksToActivity(singleton.currentActivity)
+			unblockURLs()
+			singleton.workHoursLimitApplied = false
+
+			if singleton.activity != "" {
 				applyBlocksToActivity(singleton.activity)
 			}
 
@@ -59,15 +63,14 @@ func manageState() {
 
 		if singleton.activity == "" && workHours() {
 			if !singleton.workHoursLimitApplied {
-				applyBlocksToActivity("workHours")
+				killProcesses("workHours")
 				singleton.workHoursLimitApplied = true
 			}
 		}
 
 		if singleton.activity == "" && !workHours() {
 			if singleton.workHoursLimitApplied {
-
-				removeBlocksToActivity("workHours")
+				unblockURLs()
 				singleton.workHoursLimitApplied = false
 			}
 		}
@@ -78,6 +81,11 @@ func manageState() {
 func workHours() bool {
 	loc, _ := time.LoadLocation("America/Mexico_City")
 	now := time.Now().In(loc)
+
+	if int(now.Weekday()) == 6 || int(now.Weekday()) == 0 {
+		return false
+	}
+
 	start := time.Date(now.Year(), now.Month(), now.Day(), 8, 0, 0, 0, loc)
 	end := time.Date(now.Year(), now.Month(), now.Day(), 20, 0, 0, 0, loc)
 	return now.After(start) && now.Before(end)

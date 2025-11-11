@@ -1,6 +1,8 @@
 package main
 
-import "github.com/eiannone/keyboard"
+import (
+	"github.com/eiannone/keyboard"
+)
 
 func readLine() (string, error) {
 	var input string
@@ -9,9 +11,15 @@ func readLine() (string, error) {
 		if err != nil {
 			return "", err
 		}
+
+		if key == keyboard.KeyCtrlC {
+			return "kill", nil
+		}
+
 		if key == keyboard.KeyEnter {
 			break
 		}
+
 		input += string(char)
 	}
 	return input, nil

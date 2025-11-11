@@ -39,6 +39,14 @@ type block struct {
 }
 
 var blocks = map[string][]block{
+	"ad": {
+		block{false, "www.endoftheinter.net"},
+		block{false, "boards.endoftheinter.net"},
+		block{false, "www.metacritic.com"},
+		block{false, "www.vox.com"},
+		block{false, "www.nytimes.com"},
+		block{false, "www.realclearpolitics.com"},
+	},
 	"zefr": {
 		block{false, "www.endoftheinter.net"},
 		block{false, "boards.endoftheinter.net"},
@@ -67,6 +75,7 @@ var blocks = map[string][]block{
 		block{false, "www.realclearpolitics.com"},
 		block{false, "www.reddit.com"},
 		block{false, "www.x.com"},
+		block{false, "x.com"},
 	},
 	"ceo": {
 		block{false, "www.youtube.com"},
@@ -87,6 +96,7 @@ var blocks = map[string][]block{
 		block{false, "www.realclearpolitics.com"},
 		block{false, "www.reddit.com"},
 		block{false, "www.x.com"},
+		block{false, "x.com"},
 	},
 	"workHours": {
 		block{false, "www.youtube.com"},
@@ -107,8 +117,10 @@ var blocks = map[string][]block{
 		block{false, "www.facebook.com"},
 		block{false, "www.reddit.com"},
 		block{false, "www.x.com"},
+		block{false, "x.com"},
+		block{true, "/Applications/WhatsApp.app/Contents/MacOS/WhatsApp"},
 	},
-	"I am weak and require dopamine to function": {},
+	"break": {},
 	"lunch": {},
 }
 
@@ -123,19 +135,8 @@ func applyBlocksToActivity(activity string) error {
 	return nil
 }
 
-func removeBlocksToActivity(activity string) error {
-	fmt.Printf("\nDeactivating %v profile\n", activity)
-	bls, ok := blocks[activity]
-	if ok {
-		if err := unblockURLs(bls); err != nil {
-			log.Fatal(err)
-		}
-	}
-	return nil
-}
-
 func blockURLs(bls []block) error {
-	file, err := os.OpenFile(getHostsFile(), os.O_RDWR|os.O_APPEND, 0644)
+	file, err := os.OpenFile(getHostsFile(), os.O_RDWR|os.O_APPEND, 0o644)
 	if err != nil {
 		return err
 	}
@@ -175,29 +176,20 @@ func clearDNSCache() error {
 	return nil
 }
 
-func unblockURLs(bls []block) error {
-	list := blocksToList(bls)
-
-	file, err := os.OpenFile(getHostsFile(), os.O_RDWR, 0644)
+func unblockURLs() error {
+	fmt.Println("Unblocking")
+	file, err := os.OpenFile(getHostsFile(), os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	keep := true
 	var b bytes.Buffer
 
 	for scanner.Scan() {
-		keep = true
-		for _, i := range list {
-			text := scanner.Text()
-			if strings.Contains(text, i) && strings.Contains(text, "#pomo") {
-				keep = false
-				break
-			}
-		}
-		if keep {
+		text := scanner.Text()
+		if !strings.Contains(text, "#pomo") {
 			b.Write(append(scanner.Bytes(), []byte(getLineEnd())...))
 		}
 	}
@@ -208,14 +200,4 @@ func unblockURLs(bls []block) error {
 		return err
 	}
 	return nil
-}
-
-func blocksToList(bls []block) []string {
-	ret := []string{}
-	for _, b := range bls {
-		if !b.IsExecutable {
-			ret = append(ret, b.ProcessOrUrl)
-		}
-	}
-	return ret
 }
