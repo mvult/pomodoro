@@ -17,8 +17,6 @@ type Pomodoro struct {
 	InterruptChan chan bool
 }
 
-type logEntries []Pomodoro
-
 func main() {
 	err := keyboard.Open()
 	if err != nil {

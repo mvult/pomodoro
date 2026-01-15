@@ -124,7 +124,7 @@ var blocks = map[string][]block{
 	"lunch": {},
 }
 
-func applyBlocksToActivity(activity string) error {
+func applyBlocksToActivity(activity string) {
 	fmt.Printf("\nActivating %v profile\n", activity)
 	bls, ok := blocks[activity]
 	if ok {
@@ -132,7 +132,6 @@ func applyBlocksToActivity(activity string) error {
 			log.Fatal(err)
 		}
 	}
-	return nil
 }
 
 func blockURLs(bls []block) error {
@@ -176,11 +175,10 @@ func clearDNSCache() error {
 	return nil
 }
 
-func unblockURLs() error {
-	fmt.Println("Unblocking")
+func unblockURLs() {
 	file, err := os.OpenFile(getHostsFile(), os.O_RDWR, 0o644)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
 	defer file.Close()
 
@@ -197,7 +195,6 @@ func unblockURLs() error {
 	file.Truncate(0)
 	file.Seek(0, 0)
 	if _, err := file.Write(b.Bytes()); err != nil {
-		return err
+		log.Fatal(err)
 	}
-	return nil
 }

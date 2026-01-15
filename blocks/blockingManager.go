@@ -50,6 +50,9 @@ func manageState() {
 
 		switch {
 		case singleton.activity == singleton.currentActivity:
+			if singleton.activity == "" && workHours() {
+				killProcesses("workHours")
+			}
 		case singleton.activity != singleton.currentActivity:
 			unblockURLs()
 			singleton.workHoursLimitApplied = false
@@ -63,6 +66,7 @@ func manageState() {
 
 		if singleton.activity == "" && workHours() {
 			if !singleton.workHoursLimitApplied {
+				fmt.Println("Activating work hours")
 				killProcesses("workHours")
 				singleton.workHoursLimitApplied = true
 			}
