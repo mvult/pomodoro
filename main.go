@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"time"
 
 	"github.com/eiannone/keyboard"
+	"github.com/joho/godotenv"
 	"github.com/mvult/pomodoro/blocks"
 )
 
@@ -18,11 +20,18 @@ type Pomodoro struct {
 }
 
 func main() {
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: could not load .env file: %v", err)
+	}
+
 	err := keyboard.Open()
 	if err != nil {
 		panic(err)
 	}
 	defer keyboard.Close()
+
+	go blocks.StartRiotMonitor()
 
 	for {
 		err = eventLoop()

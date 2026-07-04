@@ -40,16 +40,12 @@ type block struct {
 
 var blocks = map[string][]block{
 	"ad": {
-		block{false, "www.endoftheinter.net"},
-		block{false, "boards.endoftheinter.net"},
 		block{false, "www.metacritic.com"},
 		block{false, "www.vox.com"},
 		block{false, "www.nytimes.com"},
 		block{false, "www.realclearpolitics.com"},
 	},
 	"zefr": {
-		block{false, "www.endoftheinter.net"},
-		block{false, "boards.endoftheinter.net"},
 		block{false, "www.metacritic.com"},
 		block{false, "www.facebook.com"},
 		block{false, "www.vox.com"},
@@ -108,16 +104,15 @@ var blocks = map[string][]block{
 		block{false, "youtubei.googleapis.com"},
 		block{false, "ytimg.com"},
 		block{false, "ytimg.l.google.com"},
-		block{false, "www.endoftheinter.net"},
-		block{false, "boards.endoftheinter.net"},
 		block{false, "www.metacritic.com"},
 		block{false, "www.vox.com"},
 		block{false, "www.nytimes.com"},
 		block{false, "www.realclearpolitics.com"},
-		block{false, "www.facebook.com"},
 		block{false, "www.reddit.com"},
 		block{false, "www.x.com"},
 		block{false, "x.com"},
+		block{false, "breitbart.com"},
+		block{false, "disqus.com"},
 		block{true, "/Applications/WhatsApp.app/Contents/MacOS/WhatsApp"},
 	},
 	"break": {},
@@ -128,31 +123,52 @@ func applyBlocksToActivity(activity string) {
 	fmt.Printf("\nActivating %v profile\n", activity)
 	bls, ok := blocks[activity]
 	if ok {
-		if err := blockURLs(bls); err != nil {
+		if err := ensureHostsBlocked(bls); err != nil {
 			log.Fatal(err)
 		}
 	}
 }
 
-func blockURLs(bls []block) error {
-	file, err := os.OpenFile(getHostsFile(), os.O_RDWR|os.O_APPEND, 0o644)
+func ensureHostsBlocked(bls []block) error {
+	file, err := os.OpenFile(getHostsFile(), os.O_RDWR, 0o644)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	for _, b := range bls {
-		if b.IsExecutable {
-			continue
-		} else {
-			// if _, err := file.WriteString(fmt.Sprintf(getLineEnd()+"127.0.0.1\t%v #pomo", b.ProcessOrUrl)); err != nil {
-			if _, err := fmt.Fprintf(file, string(getLineEnd()+"127.0.0.1\t%v #pomo"), b.ProcessOrUrl); err != nil {
-				fmt.Println(err)
-				return err
-			}
+	scanner := bufio.NewScanner(file)
+	var b bytes.Buffer
+
+	for scanner.Scan() {
+		text := scanner.Text()
+		if !strings.Contains(text, "#pomo") {
+			b.Write(append(scanner.Bytes(), []byte(getLineEnd())...))
 		}
 	}
-	file.WriteString(getLineEnd())
+
+	for _, block := range bls {
+		if block.IsExecutable {
+			continue
+		}
+		if _, err := fmt.Fprintf(&b, "127.0.0.1\t%v #pomo%s", block.ProcessOrUrl, getLineEnd()); err != nil {
+			fmt.Println(err)
+			return err
+		}
+		if _, err := fmt.Fprintf(&b, "::1\t%v #pomo%s", block.ProcessOrUrl, getLineEnd()); err != nil {
+			fmt.Println(err)
+			return err
+		}
+	}
+
+	if err := file.Truncate(0); err != nil {
+		return err
+	}
+	if _, err := file.Seek(0, 0); err != nil {
+		return err
+	}
+	if _, err := file.Write(b.Bytes()); err != nil {
+		return err
+	}
 
 	return clearDNSCache()
 }

@@ -16,9 +16,25 @@ type processInfo struct {
 func killProcesses(activity string) {
 	bls, ok := blocks[activity]
 	if ok {
-		if err := blockURLs(bls); err != nil {
+		if err := ensureHostsBlocked(bls); err != nil {
 			log.Fatal(err)
 		}
+	}
+
+	for _, b := range bls {
+		if b.IsExecutable {
+			ps := getPIDs(b.ProcessOrUrl)
+			for _, p := range ps {
+				killProcess(p.PID)
+			}
+		}
+	}
+}
+
+func killProcessesOnly(activity string) {
+	bls, ok := blocks[activity]
+	if !ok {
+		return
 	}
 
 	for _, b := range bls {
